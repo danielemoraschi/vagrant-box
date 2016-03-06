@@ -1,6 +1,31 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+$setup = <<SCRIPT
+  chown vagrant:vagrant /home/vagrant/.ssh/gitwrap.sh
+  chmod +x /home/vagrant/.ssh/gitwrap.sh
+  chmod 600 /home/vagrant/.ssh/id_rsa
+  chmod 600 /home/vagrant/.ssh/id_rsa_dxi
+  sudo yum -y install epel-release
+  sudo yum repolist
+  sudo yum -y update
+  sudo yum -y group install @base
+  sudo yum -y group install "Development Tools"
+  sudo yum clean all &> /dev/null
+SCRIPT
+
+$docker = <<SCRIPT
+  sudo yum -y remove docker docker-selinux
+  echo $'[dockerrepo]\nname=Docker Repository\nbaseurl=https://yum.dockerproject.org/repo/main/centos/$releasever/\nenabled=1\ngpgcheck=1\ngpgkey=https://yum.dockerproject.org/gpg\n' \
+    | sudo tee --append /etc/yum.repos.d/docker.repo > /dev/null
+  sudo yum -y install docker-engine
+  sudo service docker start
+  sudo chkconfig docker on
+  sudo curl -L https://github.com/docker/compose/releases/download/1.6.2/docker-compose-`uname -s`-`uname -m` > docker-compose
+  sudo mv docker-compose /bin/docker-compose
+  sudo chmod +x /bin/docker-compose
+SCRIPT
+
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
 # backwards compatibility). Please don't change it unless you know what
@@ -27,7 +52,8 @@ Vagrant.configure(2) do |config|
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
   # config.vm.network "private_network", ip: "192.168.33.10"
-  config.vm.network :private_network, ip: "10.0.0.10"
+  config.vm.network :private_network, ip: "192.168.10.10"
+  config.vm.hostname = "dev"
 
   # Create a public network, which generally matched to bridged network.
   # Bridged networks make the machine appear as another physical device on
@@ -39,7 +65,6 @@ Vagrant.configure(2) do |config|
   # the path on the guest to mount the folder. And the optional third
   # argument is a set of non-required options.
   config.vm.synced_folder "~/www", "/www", type: "nfs"
-  config.vm.synced_folder "~/.ssh-work", "/home/vagrant/.ssh-work", type: "nfs"
 
   # Provider-specific configuration so you can fine-tune various
   # backing providers for Vagrant. These expose provider-specific options.
@@ -67,33 +92,9 @@ Vagrant.configure(2) do |config|
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision "file", source: "~/.profile", destination: "~/.bashrc"
-  config.vm.provision "file", source: "~/ssh-gitwrap.sh", destination: "~/ssh-gitwrap.sh"
+  config.vm.provision "file", source: "~/.ssh/gitwrap.sh", destination: "~/.ssh/gitwrap.sh"
   config.vm.provision "file", source: "~/.ssh/id_rsa", destination: "~/.ssh/id_rsa"
-  config.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "~/.ssh/id_rsa.pub"
-  config.vm.provision "shell", inline: <<-SHELL
-     chown vagrant:vagrant /home/vagrant/ssh-gitwrap.sh
-     chmod +x /home/vagrant/ssh-gitwrap.sh
-     sudo yum -y install epel-release
-     sudo yum repolist
-     sudo yum -y update
-     sudo yum -y group install @base
-     sudo yum -y group install "Development Tools"
-     sudo yum -y remove docker docker-selinux
-     sudo tee /etc/yum.repos.d/docker.repo <<-EOF
-      [dockerrepo]
-      name=Docker Repository
-      baseurl=https://yum.dockerproject.org/repo/main/centos/$releasever/
-      enabled=1
-      gpgcheck=1
-      gpgkey=https://yum.dockerproject.org/gpg
-     EOF
-     sudo yum -y install docker-engine
-     sudo service docker start
-     sudo chkconfig docker on
-     sudo curl -L https://github.com/docker/compose/releases/download/1.6.2/docker-compose-`uname -s`-`uname -m` > docker-compose
-     sudo mv docker-compose /bin/docker-compose
-     sudo chmod +x /bin/docker-compose
-     sudo curl -sL https://download.getcarina.com/dvm/latest/install.sh | sh
-     sudo yum clean all &> /dev/null
-  SHELL
+  config.vm.provision "file", source: "~/.ssh/id_rsa_dxi", destination: "~/.ssh/id_rsa_dxi"
+  config.vm.provision "shell", inline: $setup
+  config.vm.provision "shell", inline: $docker
 end
