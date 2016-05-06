@@ -1,17 +1,26 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+$instance_name = "dev"
+$vm_memory = 4048
+$vm_cpus = 2
+$shared_folders = {'~/www' => '/www'}
+
 $setup = <<SCRIPT
   chown vagrant:vagrant /home/vagrant/.ssh/gitwrap.sh
   chmod +x /home/vagrant/.ssh/gitwrap.sh
   chmod 600 /home/vagrant/.ssh/id_rsa
-  chmod 600 /home/vagrant/.ssh/id_rsa_dxi
+  chmod 600 /home/vagrant/.ssh/id_rsa_work
   sudo yum -y install epel-release
   sudo yum repolist
   sudo yum -y update
-  sudo yum -y group install @base
-  sudo yum -y group install "Development Tools"
+  sudo yum -y install curl wget nmap vim gcc make git rsync bzip2 traceroute
   sudo yum clean all &> /dev/null
+  git config --global user.email "daniele.moraschi@gmail.com"
+  git config --global user.name "Daniele Moraschi"
+  git config --global push.default simple
+  git config --global color.ui true
+  git config --global core.fileMode false
 SCRIPT
 
 $docker = <<SCRIPT
@@ -21,7 +30,7 @@ $docker = <<SCRIPT
   sudo yum -y install docker-engine
   sudo service docker start
   sudo chkconfig docker on
-  sudo curl -L https://github.com/docker/compose/releases/download/1.6.2/docker-compose-`uname -s`-`uname -m` > docker-compose
+  sudo curl -L https://github.com/docker/compose/releases/download/1.7.0/docker-compose-`uname -s`-`uname -m` > docker-compose
   sudo mv docker-compose /bin/docker-compose
   sudo chmod +x /bin/docker-compose
 SCRIPT
@@ -38,6 +47,8 @@ Vagrant.configure(2) do |config|
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
   config.vm.box = "centos/7"
+  #config.ssh.insert_key = false
+  #config.vm.box = "minimal/centos7"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -53,7 +64,7 @@ Vagrant.configure(2) do |config|
   # using a specific IP.
   # config.vm.network "private_network", ip: "192.168.33.10"
   config.vm.network :private_network, ip: "192.168.10.10"
-  config.vm.hostname = "dev"
+  config.vm.hostname = $instance_name
 
   # Create a public network, which generally matched to bridged network.
   # Bridged networks make the machine appear as another physical device on
@@ -64,7 +75,10 @@ Vagrant.configure(2) do |config|
   # the path on the host to the actual folder. The second argument is
   # the path on the guest to mount the folder. And the optional third
   # argument is a set of non-required options.
-  config.vm.synced_folder "~/www", "/www", type: "nfs"
+  # config.vm.synced_folder "~/www", "/www", type: "nfs"
+  $shared_folders.each_with_index do |(host_folder, guest_folder), index|
+    config.vm.synced_folder host_folder.to_s, guest_folder.to_s, id: "%s-share-%02d" % [$instance_name, index], type: "nfs"
+  end
 
   # Provider-specific configuration so you can fine-tune various
   # backing providers for Vagrant. These expose provider-specific options.
@@ -73,9 +87,9 @@ Vagrant.configure(2) do |config|
   config.vm.provider "virtualbox" do |vb|
   #   # Display the VirtualBox GUI when booting the machine
   #   vb.gui = true
-  #
   #   # Customize the amount of memory on the VM:
-      vb.memory = "2048"
+      vb.memory = $vm_memory
+      vb.cpus = $vm_cpus
   end
   #
   # View the documentation for the provider you are using for more
@@ -94,7 +108,7 @@ Vagrant.configure(2) do |config|
   config.vm.provision "file", source: "~/.profile", destination: "~/.bashrc"
   config.vm.provision "file", source: "~/.ssh/gitwrap.sh", destination: "~/.ssh/gitwrap.sh"
   config.vm.provision "file", source: "~/.ssh/id_rsa", destination: "~/.ssh/id_rsa"
-  config.vm.provision "file", source: "~/.ssh/id_rsa_dxi", destination: "~/.ssh/id_rsa_dxi"
+  config.vm.provision "file", source: "~/.ssh/id_rsa_work", destination: "~/.ssh/id_rsa_work"
   config.vm.provision "shell", inline: $setup
   config.vm.provision "shell", inline: $docker
 end
