@@ -14,7 +14,7 @@ $setup = <<SCRIPT
   sudo yum -y install epel-release
   sudo yum repolist
   sudo yum -y update
-  sudo yum -y install curl wget nmap vim gcc make git rsync bzip2 traceroute
+  sudo yum -y install curl wget nmap vim gcc make git rsync bzip2 traceroute jq
   sudo yum clean all &> /dev/null
   git config --global user.email "daniele.moraschi@gmail.com"
   git config --global user.name "Daniele Moraschi"
@@ -24,13 +24,14 @@ $setup = <<SCRIPT
 SCRIPT
 
 $docker = <<SCRIPT
-  sudo yum -y remove docker docker-selinux
+  sudo yum -y remove docker docker-engine docker docker-selinux
   echo $'[dockerrepo]\nname=Docker Repository\nbaseurl=https://yum.dockerproject.org/repo/main/centos/$releasever/\nenabled=1\ngpgcheck=1\ngpgkey=https://yum.dockerproject.org/gpg\n' \
     | sudo tee --append /etc/yum.repos.d/docker.repo > /dev/null
   sudo yum -y install docker-engine
   sudo service docker start
   sudo chkconfig docker on
-  sudo curl -L https://github.com/docker/compose/releases/download/1.7.0/docker-compose-`uname -s`-`uname -m` > docker-compose
+  # sudo curl -L https://github.com/docker/compose/releases/download/1.7.1/docker-compose-`uname -s`-`uname -m` > docker-compose
+  curl -L `curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r '.assets[].browser_download_url | select(contains("Linux") and contains("x86_64"))'` > docker-compose
   sudo mv docker-compose /bin/docker-compose
   sudo chmod +x /bin/docker-compose
 SCRIPT
@@ -76,6 +77,7 @@ Vagrant.configure(2) do |config|
   # the path on the guest to mount the folder. And the optional third
   # argument is a set of non-required options.
   # config.vm.synced_folder "~/www", "/www", type: "nfs"
+  config.vm.synced_folder ".", "/home/vagrant/sync", disabled: true
   $shared_folders.each_with_index do |(host_folder, guest_folder), index|
     config.vm.synced_folder host_folder.to_s, guest_folder.to_s, id: "%s-share-%02d" % [$instance_name, index], type: "nfs"
   end
