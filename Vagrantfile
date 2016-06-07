@@ -16,6 +16,9 @@ $setup = <<SCRIPT
   sudo yum -y update
   sudo yum -y install curl wget nmap vim gcc make git rsync bzip2 traceroute jq
   sudo yum clean all &> /dev/null
+SCRIPT
+
+$git = <<SCRIPT
   git config --global user.email "daniele.moraschi@gmail.com"
   git config --global user.name "Daniele Moraschi"
   git config --global push.default simple
@@ -35,6 +38,11 @@ $docker = <<SCRIPT
   sudo mv docker-compose /bin/docker-compose
   sudo chmod +x /bin/docker-compose
 SCRIPT
+
+$heroku = <<SCRIPT
+  wget -O- https://toolbelt.heroku.com/install.sh | sudo sh
+SCRIPT
+
 
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
@@ -112,5 +120,7 @@ Vagrant.configure(2) do |config|
   config.vm.provision "file", source: "~/.ssh/id_rsa", destination: "~/.ssh/id_rsa"
   config.vm.provision "file", source: "~/.ssh/id_rsa_work", destination: "~/.ssh/id_rsa_work"
   config.vm.provision "shell", inline: $setup
+  config.vm.provision "shell", inline: $git
   config.vm.provision "shell", inline: $docker
+  config.vm.provision "shell", inline: $heroku
 end
